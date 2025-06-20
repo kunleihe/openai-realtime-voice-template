@@ -31,30 +31,50 @@ async def relay_messages(client_ws: WebSocket, vendor_ws):
     async def client_to_vendor():
         try:
             while True:
-                data = await client_ws.receive_json()
-                if data and json_validator(data):
-                    await vendor_ws.send(json.dumps(data))
-                else:
-                    warning_msg = "Invalid data: payload should be JSON."
-                    logging.warning(warning_msg)
-                    await send_text_safe(client_ws, warning_msg)
+                # Check for incoming message type
+                message = await client_ws.receive()
+                
+                if "text" in message:
+                    # Handle JSON messages (all messages now including audio)
+                    try:
+                        data = json.loads(message["text"])
+                        if data and json_validator(data):
+                            await vendor_ws.send(json.dumps(data))
+                            logging.debug(f"Relayed JSON message: {data.get('type', 'unknown')}")
+                        else:
+                            warning_msg = "Invalid JSON data received."
+                            logging.warning(warning_msg)
+                            await send_text_safe(client_ws, warning_msg)
+                    except json.JSONDecodeError:
+                        warning_msg = "Invalid JSON format."
+                        logging.warning(warning_msg)
+                        await send_text_safe(client_ws, warning_msg)
+                    
         except WebSocketDisconnect:
             logging.info("Client WebSocket disconnected.")
         except Exception as e:
             print(traceback.format_exc())
-
             logging.error(f"Error in client_to_vendor: {e}")
 
     async def vendor_to_client():
         try:
             while True:
                 data = await vendor_ws.recv()
-                await client_ws.send_text(data)
+                
+                # Check if data is binary (audio) or text (JSON)
+                if isinstance(data, bytes):
+                    # Binary data (audio response)
+                    logging.debug(f"Received binary data from vendor: {len(data)} bytes")
+                    await client_ws.send_bytes(data)
+                else:
+                    # Text data (JSON response)
+                    logging.debug("Received text data from vendor")
+                    await client_ws.send_text(data)
+                    
         except websockets.exceptions.ConnectionClosed as e:
             logging.info(f"Vendor WebSocket disconnected: {e}")
         except Exception as e:
             print(traceback.format_exc())
-
             logging.error(f"Error in vendor_to_client: {e}")
 
     tasks = [
