@@ -1,140 +1,134 @@
-# openai-realtime-fastapi
+# Convo Book - Real-time Communication Hub
 
-This project facilitates real-time communication between FastAPI WebSocket connections and OpenAI's WebSocket connections, including compatibility with Azure OpenAI. It acts as a relay server that can be extended for security and customization purposes.
+This project facilitates real-time communication between FastAPI WebSocket connections and OpenAI's WebSocket connections, including compatibility with Azure OpenAI. It now features both legacy HTML clients and a modern React frontend.
 
-![service flow](readme_assets/fastapi-relay-server-flow.svg)
+## 🏗️ Project Structure 
 
-![postman connect](readme_assets/postman-connection.png)
+```
+convo-book/
+├── backend/                    # FastAPI server
+│   ├── app/                   # Application code
+│   └── requirements.txt       # Python dependencies
+├── frontend/                   # React application
+│   ├── src/                   # React components and hooks
+│   └── package.json           # Node.js dependencies
+├── client/                     # Legacy HTML clients (still functional)
+│   ├── client_1.html         # Original WebSocket client
+│   └── voice_client.html     # Original voice client
+└── start_dev.sh              # Development script
+```
 
-## Table of Contents
+## 🚀 Quick Start
 
-- [Overview](#overview)
-- [Setup and Installation](#setup-and-installation)
-- [Configuration](#configuration)
-- [Usage](#usage)
-- [Development](#development)
-- [Benefits and Use Cases](#benefits-and-use-cases)
-- [Acknowledgments](#acknowledgments)
+### Option 1: Development Mode (Both Servers)
+```bash
+./start_dev.sh
+```
 
-## Overview
+This starts:
+- **Backend**: `http://localhost:8000` 
+- **Frontend Dev**: `http://localhost:3000`
 
-This application uses FastAPI to provide a WebSocket interface that connects with OpenAI's WebSocket API. The project is structured to handle real-time data exchange, making it suitable for scenarios where latency and live updates are crucial. It also supports integration with Azure OpenAI.
+### Option 2: Production Mode (Single Server)
+```bash
+cd backend && ./start_server.sh
+```
 
-## Setup and Installation
+This serves everything from `http://localhost:8000`:
+- **React App**: `http://localhost:8000/app`
+- **Legacy Clients**: `http://localhost:8000/client_1.html` | `http://localhost:8000/voice_client.html`
+
+## 📱 Available Interfaces
+
+### ✨ New React App (Recommended)
+- **Home**: `http://localhost:8000/app` - Choose your client type
+- **WebSocket Client**: `http://localhost:8000/app/websocket` - Modern React version
+- **Voice Client**: `http://localhost:8000/app/voice` - Modern React version
+
+### 📜 Legacy HTML Clients (Still Working)
+- **WebSocket Client**: `http://localhost:8000/client_1.html` - Original HTML version
+- **Voice Client**: `http://localhost:8000/voice_client.html` - Original HTML version
+
+## 🛠️ Development
+
+### Backend Development
+```bash
+cd backend
+source ../venv/bin/activate  # If using virtual environment
+uvicorn app.main:app --reload
+```
+
+### Frontend Development
+```bash
+cd frontend
+npm run dev
+```
+
+### Building for Production
+```bash
+cd frontend
+npm run build
+```
+
+## 📦 Setup and Installation
 
 ### Prerequisites
-
 - Python 3.8+
+- Node.js 16+
 - An OpenAI API Key or Azure OpenAI API Key
 
 ### Installation
 
 1. Clone the repository:
-
    ```bash
-   git clone https://github.com/Geo-Joy/openai-realtime-fastapi
-   cd openai-realtime-fastapi
+   git clone <repository-url>
+   cd convo-book
    ```
 
-2. Set up a virtual environment:
-
+2. Set up Python environment:
    ```bash
-   python -m venv venv
+   python3 -m venv venv
    source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+   cd backend && pip install -r requirements.txt
    ```
 
-3. Install dependencies:
-
+3. Set up React environment:
    ```bash
-   pip install -r requirements.txt
+   cd frontend && npm install
    ```
 
-4. Create a `.env` file in the root directory with the following content. Use the appropriate URL depending on whether you are using OpenAI or Azure OpenAI:
-
+4. Create a `.env` file in the `/backend/app/`:
    ```env
    OPENAI_API_KEY="your-openai-api-key"
    OPENAI_REALTIME_URL="wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01"
    USE_AZURE_OPENAI=False
    ```
 
-   For Azure OpenAI, replace the URL as follows and set `USE_AZURE_OPENAI` to `True`:
+## 🧪 Testing the Application
 
-   ```env
-   OPENAI_API_KEY="your-azure-openai-api-key"
-   OPENAI_REALTIME_URL="wss://<sub-domain>.openai.azure.com/openai/realtime?api-version=2024-10-01-preview&deployment=gpt-4o-realtime-preview"
-   USE_AZURE_OPENAI=True
-   ```
+1. **Health Check**: Visit `http://localhost:8000/health`
+2. **Legacy WebSocket**: `http://localhost:8000/client_1.html`
+3. **Legacy Voice**: `http://localhost:8000/voice_client.html`
+4. **React App**: `http://localhost:8000/app`
+5. **WebSocket Endpoint**: `ws://localhost:8000/realtime`
 
-## Configuration
+## 🔧 Configuration
 
-Configuration settings are managed using environment variables loaded from a `.env` file. The main configuration file is `config.py`, which retrieves values like `API_KEY` and `VENDOR_WS_URL` from the environment.
+Configuration settings are managed using environment variables loaded from a `.env` file. The main configuration file is `backend/app/config.py`.
 
-## Usage
+## 📚 Key Features
 
-To start the application, use Uvicorn to run the FastAPI server:
+- **Hybrid Architecture**: Legacy HTML + Modern React
+- **Real-time WebSocket Communication**
+- **Voice Recording and Processing**
+- **OpenAI/Azure OpenAI Integration**
+- **Cross-platform Development Tools**
 
-```bash
-uvicorn app.main:app --reload --reload-dir app --reload-dir client
-```
-
-Or use the provided script:
-
-```bash
-./start_server.sh
-```
-
-The application should now be running on `http://localhost:8000`.
-
-### Testing the Application
-
-1. **Health Check**: Visit `http://localhost:8000/` to verify the server is running
-2. **WebSocket Client**: Access the included client at `http://localhost:8000/client_1.html`
-3. **WebSocket Client**: Access the voice client at `http://localhost:8000/voice_client.html`
-4. **WebSocket Endpoint**: The WebSocket endpoint is available at `ws://localhost:8000/realtime`
-
-### Troubleshooting
-
-If you encounter the error "Could not import module 'main'", make sure you're running the command with the correct module path (`app.main:app`) since the `main.py` file is located in the `app/` directory.
-
-## Development
-
-### Key Files
-
-- `main.py`: Initializes the FastAPI app and includes routers for various endpoints.
-- `health_check.py`: Provides a simple health check route.
-- `realtime.py`: Manages the WebSocket connection and data relay logic.
-
-## Benefits and Use Cases
-
-The openai-realtime-fastapi project can act as a relay server with various advantages:
-
-1. **Security and Privacy**:
-
-   - **API Credential Protection**: By routing requests through a server, API keys are kept secure and hidden from client-side exposure.
-   - **Sensitive Data Handling**: Execute sensitive operations server-side to prevent leakage or manipulation from client-side interactions.
-
-2. **Controlled Environment**:
-
-   - **Centralized Logic**: Define and manage business logic server-side, ensuring uniform application behavior and more straightforward updates.
-   - **Restricted Access**: Permit only specific types of requests and responses between the client and third-party services, enhancing security and rule enforcement.
-
-3. **Authentication and Authorization**:
-
-   - **Flexible Authentication Mechanisms**: Implement various authentication strategies (e.g., OAuth, JWT, API Key) based on application requirements to ensure secure client-server interactions.
-   - **Single Sign-On (SSO)**: Enable SSO to streamline user access, reducing the need for multiple login credentials, while keeping vendor connections and API interactions hidden from the end-user.
-
-4. **Reduced Client Complexity**:
-
-   - Clients can interface with a simplified API rather than directly interact with complex third-party services.
-   - Streamline client-side applications since logic and API integrations are managed server-side.
-
-5. **Flexibility for Tests and DevOps**:
-   - Mock or alter API responses for different environments without impacting production clients.
-   - Seamlessly switch between different service providers or deployments.
-
-## Acknowledgments
+## 🤝 Acknowledgments
 
 - [FastAPI](https://fastapi.tiangolo.com/)
+- [React](https://react.dev/)
+- [Vite](https://vite.dev/)
 - [OpenAI API](https://openai.com/api/)
 - [Azure OpenAI](https://azure.microsoft.com/services/cognitive-services/openai-service/)
-- Contributor: Geo Joy (https://www.linkedin.com/in/-itsg/)
+- [openai-realtime-fastapi] (https://github.com/Geo-Joy/openai-realtime-fastapi.git)
