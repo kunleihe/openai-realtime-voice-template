@@ -2,8 +2,8 @@ import os
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
-# Look for .env file in project root (parent of backend directory)
-env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), '.env')
+# Look for .env file in the same directory as config.py
+env_path = os.path.join(os.path.dirname(__file__), '.env')
 load_dotenv(env_path)
 
 # Configuration variables

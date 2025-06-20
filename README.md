@@ -4,7 +4,7 @@ This project facilitates real-time communication between FastAPI WebSocket conne
 
 ![service flow](readme_assets/fastapi-relay-server-flow.svg)
 
-## 🏗️ Project Structure (Hybrid Approach)
+## 🏗️ Project Structure 
 
 ```
 convo-book/
@@ -99,30 +99,12 @@ npm run build
    cd frontend && npm install
    ```
 
-4. Create a `.env` file in the root directory:
+4. Create a `.env` file in the `/backend/app/`:
    ```env
    OPENAI_API_KEY="your-openai-api-key"
    OPENAI_REALTIME_URL="wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01"
    USE_AZURE_OPENAI=False
    ```
-
-## 🎯 Migration Benefits
-
-### ✅ Zero Disruption
-- **Legacy clients work exactly as before**
-- **Same URLs**: `client_1.html` and `voice_client.html`
-- **Same functionality**: All WebSocket and audio features preserved
-
-### ✨ Modern Development
-- **React components** with hooks for state management
-- **Component-based architecture** for better maintainability
-- **Modern build tools** and development experience
-- **Hot reload** during development
-
-### 🔄 Gradual Transition
-- **Use React for new features**
-- **Keep HTML for stable functionality**
-- **Migrate components when ready**
 
 ## 🧪 Testing the Application
 
@@ -151,3 +133,4 @@ Configuration settings are managed using environment variables loaded from a `.e
 - [Vite](https://vite.dev/)
 - [OpenAI API](https://openai.com/api/)
 - [Azure OpenAI](https://azure.microsoft.com/services/cognitive-services/openai-service/)
+- [openai-realtime-fastapi] (https://github.com/Geo-Joy/openai-realtime-fastapi.git)
