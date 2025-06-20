@@ -74,10 +74,20 @@ Configuration settings are managed using environment variables loaded from a `.e
 To start the application, use Uvicorn to run the FastAPI server:
 
 ```bash
-uvicorn main:app --reload
+uvicorn app.main:app --reload
 ```
 
 The application should now be running on `http://localhost:8000`.
+
+### Testing the Application
+
+1. **Health Check**: Visit `http://localhost:8000/` to verify the server is running
+2. **WebSocket Client**: Access the included client at `http://localhost:8000/client_1.html`
+3. **WebSocket Endpoint**: The WebSocket endpoint is available at `ws://localhost:8000/realtime`
+
+### Troubleshooting
+
+If you encounter the error "Could not import module 'main'", make sure you're running the command with the correct module path (`app.main:app`) since the `main.py` file is located in the `app/` directory.
 
 ## Development
 
