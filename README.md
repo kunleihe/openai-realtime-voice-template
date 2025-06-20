@@ -2,8 +2,6 @@
 
 This project facilitates real-time communication between FastAPI WebSocket connections and OpenAI's WebSocket connections, including compatibility with Azure OpenAI. It now features both legacy HTML clients and a modern React frontend.
 
-![service flow](readme_assets/fastapi-relay-server-flow.svg)
-
 ## 🏗️ Project Structure 
 
 ```
@@ -89,7 +87,7 @@ npm run build
 
 2. Set up Python environment:
    ```bash
-   python -m venv venv
+   python3 -m venv venv
    source venv/bin/activate  # On Windows use `venv\Scripts\activate`
    cd backend && pip install -r requirements.txt
    ```
