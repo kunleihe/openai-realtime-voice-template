@@ -83,7 +83,8 @@ The application should now be running on `http://localhost:8000`.
 
 1. **Health Check**: Visit `http://localhost:8000/` to verify the server is running
 2. **WebSocket Client**: Access the included client at `http://localhost:8000/client_1.html`
-3. **WebSocket Endpoint**: The WebSocket endpoint is available at `ws://localhost:8000/realtime`
+3. **WebSocket Client**: Access the voice client at `http://localhost:8000/voice_client.html`
+4. **WebSocket Endpoint**: The WebSocket endpoint is available at `ws://localhost:8000/realtime`
 
 ### Troubleshooting
 
