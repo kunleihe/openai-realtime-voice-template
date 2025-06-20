@@ -74,7 +74,13 @@ Configuration settings are managed using environment variables loaded from a `.e
 To start the application, use Uvicorn to run the FastAPI server:
 
 ```bash
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --reload-dir app --reload-dir client
+```
+
+Or use the provided script:
+
+```bash
+./start_server.sh
 ```
 
 The application should now be running on `http://localhost:8000`.
