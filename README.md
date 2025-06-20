@@ -131,4 +131,4 @@ Configuration settings are managed using environment variables loaded from a `.e
 - [Vite](https://vite.dev/)
 - [OpenAI API](https://openai.com/api/)
 - [Azure OpenAI](https://azure.microsoft.com/services/cognitive-services/openai-service/)
-- [openai-realtime-fastapi] (https://github.com/Geo-Joy/openai-realtime-fastapi.git)
+- [openai-realtime-fastapi](https://github.com/Geo-Joy/openai-realtime-fastapi.git)
