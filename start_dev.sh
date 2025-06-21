@@ -20,7 +20,7 @@ cd backend
 if [ -d "../venv" ]; then
     source ../venv/bin/activate
 fi
-uvicorn app.main:app --reload --reload-dir app --reload-dir ../client --host 0.0.0.0 --port 8000 &
+uvicorn app.main:app --reload --reload-dir app --host 0.0.0.0 --port 8000 &
 BACKEND_PID=$!
 cd ..
 
@@ -35,10 +35,9 @@ FRONTEND_PID=$!
 cd ..
 
 echo "✅ Development environment is ready!"
-echo "📱 Frontend: http://localhost:3000"
-echo "🔧 Backend: http://localhost:8000"
-echo "📜 Legacy clients: http://localhost:8000/client_1.html | http://localhost:8000/voice_client.html"
-echo "🎯 React app: http://localhost:8000/app"
+echo "📱 Frontend (React): http://localhost:3000"
+echo "🔧 Backend API: http://localhost:8000"
+echo "📚 API Documentation: http://localhost:8000/docs"
 echo ""
 echo "Press Ctrl+C to stop all servers"
 

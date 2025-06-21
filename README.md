@@ -1,6 +1,6 @@
 # Convo Book - Real-time Communication Hub
 
-This project facilitates real-time communication between FastAPI WebSocket connections and OpenAI's WebSocket connections, including compatibility with Azure OpenAI. It now features both legacy HTML clients and a modern React frontend.
+A modern real-time communication application built with **React** frontend and **FastAPI** backend, featuring WebSocket connections and OpenAI integration for voice and text processing.
 
 ## 🏗️ Project Structure 
 
@@ -8,46 +8,52 @@ This project facilitates real-time communication between FastAPI WebSocket conne
 convo-book/
 ├── backend/                    # FastAPI server
 │   ├── app/                   # Application code
+│   │   ├── routes/           # API endpoints
+│   │   ├── main.py          # FastAPI application
+│   │   └── config.py        # Configuration
 │   └── requirements.txt       # Python dependencies
 ├── frontend/                   # React application
 │   ├── src/                   # React components and hooks
+│   │   ├── components/      # UI components
+│   │   ├── hooks/          # Custom React hooks
+│   │   └── App.jsx         # Main application
 │   └── package.json           # Node.js dependencies
-├── client/                     # Legacy HTML clients (still functional)
-│   ├── client_1.html         # Original WebSocket client
-│   └── voice_client.html     # Original voice client
 └── start_dev.sh              # Development script
 ```
 
 ## 🚀 Quick Start
 
-### Option 1: Development Mode (Both Servers)
+### Development Mode (Recommended)
 ```bash
 ./start_dev.sh
 ```
 
 This starts:
-- **Backend**: `http://localhost:8000` 
-- **Frontend Dev**: `http://localhost:3000`
+- **Frontend (React)**: `http://localhost:3000` 
+- **Backend API**: `http://localhost:8000`
+- **API Documentation**: `http://localhost:8000/docs`
 
-### Option 2: Production Mode (Single Server)
+### Production Mode
 ```bash
-cd backend && ./start_server.sh
+cd frontend && npm run build
+cd ../backend && ./start_server.sh
 ```
 
 This serves everything from `http://localhost:8000`:
 - **React App**: `http://localhost:8000/app`
-- **Legacy Clients**: `http://localhost:8000/client_1.html` | `http://localhost:8000/voice_client.html`
+- **API**: `http://localhost:8000`
 
-## 📱 Available Interfaces
+## 📱 Available Features
 
-### ✨ New React App (Recommended)
-- **Home**: `http://localhost:8000/app` - Choose your client type
-- **WebSocket Client**: `http://localhost:8000/app/websocket` - Modern React version
-- **Voice Client**: `http://localhost:8000/app/voice` - Modern React version
+### ✨ React Application
+- **Home**: `http://localhost:3000` - Main dashboard
+- **WebSocket Client**: `http://localhost:3000/websocket` - Real-time text communication
+- **Voice Client**: `http://localhost:3000/voice` - Voice recording and processing
 
-### 📜 Legacy HTML Clients (Still Working)
-- **WebSocket Client**: `http://localhost:8000/client_1.html` - Original HTML version
-- **Voice Client**: `http://localhost:8000/voice_client.html` - Original HTML version
+### 🔧 API Endpoints
+- **Health Check**: `http://localhost:8000/health`
+- **WebSocket**: `ws://localhost:8000/realtime`
+- **API Docs**: `http://localhost:8000/docs`
 
 ## 🛠️ Development
 
@@ -75,7 +81,7 @@ npm run build
 ### Prerequisites
 - Python 3.8+
 - Node.js 16+
-- An OpenAI API Key or Azure OpenAI API Key
+- An OpenAI API Key
 
 ### Installation
 
@@ -106,11 +112,11 @@ npm run build
 
 ## 🧪 Testing the Application
 
-1. **Health Check**: Visit `http://localhost:8000/health`
-2. **Legacy WebSocket**: `http://localhost:8000/client_1.html`
-3. **Legacy Voice**: `http://localhost:8000/voice_client.html`
-4. **React App**: `http://localhost:8000/app`
-5. **WebSocket Endpoint**: `ws://localhost:8000/realtime`
+1. **Start Development**: `./start_dev.sh`
+2. **Frontend**: Visit `http://localhost:3000`
+3. **API Health**: `http://localhost:8000/health`
+4. **WebSocket**: Connect via the React WebSocket client
+5. **Voice**: Test voice recording via the React Voice client
 
 ## 🔧 Configuration
 
@@ -118,11 +124,12 @@ Configuration settings are managed using environment variables loaded from a `.e
 
 ## 📚 Key Features
 
-- **Hybrid Architecture**: Legacy HTML + Modern React
+- **Modern React Frontend** with hooks and components
+- **FastAPI Backend** with automatic documentation
 - **Real-time WebSocket Communication**
 - **Voice Recording and Processing**
 - **OpenAI/Azure OpenAI Integration**
-- **Cross-platform Development Tools**
+- **Development and Production Modes**
 
 ## 🤝 Acknowledgments
 
@@ -131,4 +138,3 @@ Configuration settings are managed using environment variables loaded from a `.e
 - [Vite](https://vite.dev/)
 - [OpenAI API](https://openai.com/api/)
 - [Azure OpenAI](https://azure.microsoft.com/services/cognitive-services/openai-service/)
-- [openai-realtime-fastapi](https://github.com/Geo-Joy/openai-realtime-fastapi.git)

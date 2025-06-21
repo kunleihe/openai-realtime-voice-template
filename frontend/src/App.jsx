@@ -21,24 +21,21 @@ const HomePage = () => (
       </Link>
     </div>
 
-    <div className="legacy-links">
-      <h3>Legacy HTML Clients (Still Available)</h3>
-      <p>
-        <a href="/client_1.html" target="_blank" rel="noopener noreferrer">
-          Original WebSocket Client
-        </a>
-        {' | '}
-        <a href="/voice_client.html" target="_blank" rel="noopener noreferrer">
-          Original Voice Client
-        </a>
-      </p>
+    <div className="features-info">
+      <h3>✨ Features</h3>
+      <ul>
+        <li>Real-time WebSocket communication</li>
+        <li>Voice recording and audio processing</li>
+        <li>Modern React interface</li>
+        <li>FastAPI backend integration</li>
+      </ul>
     </div>
   </div>
 );
 
 function App() {
   return (
-    <Router basename="/app">
+    <Router>
       <div className="App">
         <nav className="main-nav">
           <Link to="/" className="nav-brand">Convo Book</Link>
