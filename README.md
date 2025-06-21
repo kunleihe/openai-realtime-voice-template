@@ -29,7 +29,7 @@ convo-book/
 ```
 
 This starts:
-- **Frontend (React)**: `http://localhost:3000` 
+- **Frontend (React)**: `http://localhost:5173` 
 - **Backend API**: `http://localhost:8000`
 - **API Documentation**: `http://localhost:8000/docs`
 
@@ -46,9 +46,9 @@ This serves everything from `http://localhost:8000`:
 ## 📱 Available Features
 
 ### ✨ React Application
-- **Home**: `http://localhost:3000` - Main dashboard
-- **WebSocket Client**: `http://localhost:3000/websocket` - Real-time text communication
-- **Voice Client**: `http://localhost:3000/voice` - Voice recording and processing
+- **Home**: `http://localhost:5173` - Main dashboard
+- **WebSocket Client**: `http://localhost:5173/websocket` - Real-time text communication
+- **Voice Client**: `http://localhost:5173/voice` - Voice recording and processing
 
 ### 🔧 API Endpoints
 - **Health Check**: `http://localhost:8000/health`
@@ -108,12 +108,13 @@ npm run build
    OPENAI_API_KEY="your-openai-api-key"
    OPENAI_REALTIME_URL="wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01"
    USE_AZURE_OPENAI=False
+   ENVIRONMENT=development  # Can be: development, staging, or production
    ```
 
 ## 🧪 Testing the Application
 
 1. **Start Development**: `./start_dev.sh`
-2. **Frontend**: Visit `http://localhost:3000`
+2. **Frontend**: Visit `http://localhost:5173`
 3. **API Health**: `http://localhost:8000/health`
 4. **WebSocket**: Connect via the React WebSocket client
 5. **Voice**: Test voice recording via the React Voice client
@@ -122,6 +123,24 @@ npm run build
 
 Configuration settings are managed using environment variables loaded from a `.env` file. The main configuration file is `backend/app/config.py`.
 
+### Environment-Aware CORS Configuration
+
+The application features environment-aware CORS (Cross-Origin Resource Sharing) configuration that automatically adjusts allowed origins based on your deployment environment:
+
+- **Development** (`ENVIRONMENT=development`): Allows local development servers
+  - `http://localhost:5173` (Vite dev server)
+  - `http://localhost:8000` (FastAPI server)
+
+- **Staging** (`ENVIRONMENT=staging`): Configured for staging deployments
+  - `https://staging.yourdomain.com`
+  - `http://localhost:5173` (for local testing against staging)
+
+- **Production** (`ENVIRONMENT=production`): Restricted to production domains
+  - `https://yourdomain.com`
+  - `https://www.yourdomain.com`
+
+To configure CORS for your environment, set the `ENVIRONMENT` variable in your `.env` file and update the production/staging origins in `backend/app/config.py` to match your actual domains.
+
 ## 📚 Key Features
 
 - **Modern React Frontend** with hooks and components
@@ -129,6 +148,7 @@ Configuration settings are managed using environment variables loaded from a `.e
 - **Real-time WebSocket Communication**
 - **Voice Recording and Processing**
 - **OpenAI/Azure OpenAI Integration**
+- **Environment-Aware CORS Configuration**
 - **Development and Production Modes**
 
 ## 🤝 Acknowledgments

@@ -3,13 +3,14 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes.health_check import health_check_router
 from app.routes.realtime import realtime_router
+from app.config import CORS_ORIGINS
 
 app = FastAPI(title="Convo Book API", description="Real-time communication hub")
 
-# Add CORS middleware for React development server
+# Add CORS middleware - dynamically configured based on environment
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173", "http://localhost:8000"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

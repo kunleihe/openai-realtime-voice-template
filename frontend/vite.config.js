@@ -8,7 +8,6 @@ export default defineConfig({
     outDir: 'build',
   },
   server: {
-    port: 3000,
     proxy: {
       '/realtime': {
         target: 'ws://localhost:8000',
