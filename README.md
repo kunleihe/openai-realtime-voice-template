@@ -1,6 +1,6 @@
-# Convo Book - Real-time Communication Hub
+# OpenAI Realtime API + React + FastAPI Starter
 
-A modern real-time communication application built with **React** frontend and **FastAPI** backend, featuring WebSocket connections and OpenAI integration for voice and text processing.
+A full-stack voice communication application template built with **React** frontend and **FastAPI** backend, featuring direct WebSocket connections to OpenAI's Realtime API for voice and text processing. Perfect as a starting point for building real-time voice applications.
 
 ## 🏗️ Project Structure 
 
@@ -9,13 +9,20 @@ convo-book/
 ├── backend/                    # FastAPI server
 │   ├── app/                   # Application code
 │   │   ├── routes/           # API endpoints
+│   │   │   ├── health_check.py  # Health check endpoint
+│   │   │   └── realtime.py      # WebSocket relay to OpenAI
 │   │   ├── main.py          # FastAPI application
 │   │   └── config.py        # Configuration
 │   └── requirements.txt       # Python dependencies
 ├── frontend/                   # React application
 │   ├── src/                   # React components and hooks
-│   │   ├── components/      # UI components
-│   │   ├── hooks/          # Custom React hooks
+│   │   ├── components/       # UI components
+│   │   │   └── VoiceClient/  # Voice recording and communication
+│   │   ├── config/           # Configuration files
+│   │   │   └── sessionConfig.js  # Voice session settings
+│   │   ├── hooks/           # Custom React hooks
+│   │   │   ├── useAudioRecorder.js  # Audio recording functionality
+│   │   │   └── useWebSocket.js      # WebSocket communication
 │   │   └── App.jsx         # Main application
 │   └── package.json           # Node.js dependencies
 └── start_dev.sh              # Development script
@@ -43,16 +50,18 @@ This serves everything from `http://localhost:8000`:
 - **React App**: `http://localhost:8000/app`
 - **API**: `http://localhost:8000`
 
-## 📱 Available Features
+## 📱 Application Features
 
-### ✨ React Application
-- **Home**: `http://localhost:5173` - Main dashboard
-- **WebSocket Client**: `http://localhost:5173/websocket` - Real-time text communication
-- **Voice Client**: `http://localhost:5173/voice` - Voice recording and processing
+### ✨ Voice Communication Interface
+- **Main App**: `http://localhost:5173` - Real-time voice communication with OpenAI
+- **Hold-to-Talk Interface**: Press and hold to record, release to send
+- **Audio Playback**: Automatic playback of AI responses and manual playback of recordings
+- **Connection Status**: Real-time connection monitoring and status updates
+- **Debug Messages**: Live WebSocket message monitoring for troubleshooting
 
 ### 🔧 API Endpoints
 - **Health Check**: `http://localhost:8000/health`
-- **WebSocket**: `ws://localhost:8000/realtime`
+- **WebSocket Relay**: `ws://localhost:8000/realtime` - Proxies to OpenAI Realtime API
 - **API Docs**: `http://localhost:8000/docs`
 
 ## 🛠️ Development
@@ -81,7 +90,7 @@ npm run build
 ### Prerequisites
 - Python 3.8+
 - Node.js 16+
-- An OpenAI API Key
+- An OpenAI API Key with Realtime API access
 
 ### Installation
 
@@ -114,10 +123,28 @@ npm run build
 ## 🧪 Testing the Application
 
 1. **Start Development**: `./start_dev.sh`
-2. **Frontend**: Visit `http://localhost:5173`
-3. **API Health**: `http://localhost:8000/health`
-4. **WebSocket**: Connect via the React WebSocket client
-5. **Voice**: Test voice recording via the React Voice client
+2. **Open Application**: Visit `http://localhost:5173`
+3. **Test Connection**: Check the status indicator for "Connected - Ready to talk!"
+4. **Test Voice**: Hold the microphone button and speak, then release to send
+5. **Check API Health**: `http://localhost:8000/health`
+
+## ⚙️ Voice Configuration
+
+The application includes a configurable voice session system located in `frontend/src/config/sessionConfig.js`:
+
+```javascript
+export const sessionConfig = {
+    instructions: "You are a helpful voice assistant...",
+    voice: "alloy", // Options: alloy, echo, fable, onyx, nova, shimmer
+    input_audio_format: "pcm16",
+    output_audio_format: "pcm16",
+    modalities: ["text", "audio"],
+    input_audio_transcription: {
+        model: "whisper-1"
+    },
+    turn_detection: null // Manual control via UI
+};
+```
 
 ## 🔧 Configuration
 
@@ -143,18 +170,31 @@ To configure CORS for your environment, set the `ENVIRONMENT` variable in your `
 
 ## 📚 Key Features
 
-- **Modern React Frontend** with hooks and components
-- **FastAPI Backend** with automatic documentation
-- **Real-time WebSocket Communication**
-- **Voice Recording and Processing**
-- **OpenAI/Azure OpenAI Integration**
+- **Real-time Voice Communication** with OpenAI's Realtime API
+- **Modern React Frontend** with custom hooks for audio and WebSocket handling
+- **FastAPI Backend** with WebSocket relay to OpenAI
+- **Configurable Voice Sessions** with multiple voice options
+- **Hold-to-Talk Interface** with visual feedback
+- **Automatic Audio Playback** of AI responses
 - **Environment-Aware CORS Configuration**
 - **Development and Production Modes**
+- **Connection Status Monitoring**
+
+## 🏗️ Architecture
+
+The application uses a relay architecture where:
+
+1. **Frontend** captures audio and sends it via WebSocket to the backend
+2. **Backend** relays all communication to OpenAI's Realtime API
+3. **OpenAI API** processes voice input and returns audio responses
+4. **Backend** relays responses back to the frontend
+5. **Frontend** automatically plays audio responses and shows status updates
 
 ## 🤝 Acknowledgments
 
 - [FastAPI](https://fastapi.tiangolo.com/)
 - [React](https://react.dev/)
 - [Vite](https://vite.dev/)
-- [OpenAI API](https://openai.com/api/)
-- [Azure OpenAI](https://azure.microsoft.com/services/cognitive-services/openai-service/)
+- [OpenAI Realtime API](https://platform.openai.com/docs/guides/realtime)
+- [WebSockets](https://websockets.readthedocs.io/)
+- [openai-realtime-fastapi](https://github.com/Geo-Joy/openai-realtime-fastapi.git)
