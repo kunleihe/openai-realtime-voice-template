@@ -1,4 +1,4 @@
-# OpenAI Realtime API + React + FastAPI Starter
+# OpenAI Realtime API + React + FastAPI Template
 
 A full-stack voice communication application template built with **React** frontend and **FastAPI** backend, featuring direct WebSocket connections to OpenAI's Realtime API for voice and text processing. Perfect as a starting point for building real-time voice applications.
 
