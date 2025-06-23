@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { sessionConfig } from '../config/sessionConfig.js';
 
 export const useWebSocket = () => {
     const [isConnected, setIsConnected] = useState(false);
@@ -7,8 +8,45 @@ export const useWebSocket = () => {
     const responseAudioBufferRef = useRef([]);
     const isPlayingResponseRef = useRef(false);
 
-    const addMessage = useCallback((message) => {
-        setMessages(prev => [...prev, message]);
+    // Web Audio API refs for streaming
+    const audioContextRef = useRef(null);
+    const nextPlayTimeRef = useRef(0);
+    const isStreamingAudioRef = useRef(false);
+
+    // Accumulate transcript for complete response
+    const currentTranscriptRef = useRef('');
+
+    // Track timing for debugging
+    const userInputTimeRef = useRef(null);
+
+    const addMessage = useCallback((message, addDivider = false) => {
+        setMessages(prev => {
+            const newMessages = [...prev];
+            if (addDivider) {
+                newMessages.push('---');
+            }
+            newMessages.push(message);
+            return newMessages;
+        });
+    }, []);
+
+    // Initialize Web Audio API context
+    const initializeAudioContext = useCallback(() => {
+        if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
+            audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)({
+                sampleRate: 24000
+            });
+            nextPlayTimeRef.current = 0;
+        }
+        return audioContextRef.current;
+    }, []);
+
+    // Resume audio context if suspended (required by browser policies)
+    const resumeAudioContext = useCallback(async () => {
+        const audioContext = audioContextRef.current;
+        if (audioContext && audioContext.state === 'suspended') {
+            await audioContext.resume();
+        }
     }, []);
 
     // Audio utility functions
@@ -48,7 +86,53 @@ export const useWebSocket = () => {
         return buffer;
     }, []);
 
-    const handleAudioDelta = useCallback((audioBase64) => {
+    // Stream audio chunk immediately using Web Audio API
+    const streamAudioChunk = useCallback(async (pcm16Data) => {
+        try {
+            const audioContext = initializeAudioContext();
+            await resumeAudioContext();
+
+            if (pcm16Data.length === 0) {
+                return;
+            }
+
+            // Create WAV buffer for the chunk
+            const wavBuffer = createWavFile(pcm16Data, 24000);
+
+            // Decode audio data
+            const audioBuffer = await audioContext.decodeAudioData(wavBuffer);
+
+            // Create buffer source
+            const source = audioContext.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(audioContext.destination);
+
+            // Schedule playback for seamless continuation
+            const currentTime = audioContext.currentTime;
+            let startTime = Math.max(currentTime, nextPlayTimeRef.current);
+
+            // If this is the first chunk, start immediately
+            if (nextPlayTimeRef.current === 0) {
+                startTime = currentTime;
+                nextPlayTimeRef.current = currentTime;
+            }
+
+            source.start(startTime);
+            nextPlayTimeRef.current = startTime + audioBuffer.duration;
+
+        } catch (error) {
+            addMessage(`Audio streaming error: ${error.message}`);
+            console.error('Streaming error:', error);
+        }
+    }, [initializeAudioContext, resumeAudioContext, createWavFile, addMessage]);
+
+    // Reset streaming state
+    const resetStreamingState = useCallback(() => {
+        nextPlayTimeRef.current = 0;
+        isStreamingAudioRef.current = false;
+    }, []);
+
+    const handleAudioDelta = useCallback(async (audioBase64) => {
         try {
             if (!responseAudioBufferRef.current) {
                 responseAudioBufferRef.current = [];
@@ -64,15 +148,18 @@ export const useWebSocket = () => {
             // Convert PCM16 bytes to Int16Array
             const pcm16Data = new Int16Array(audioBytes.buffer);
 
-            // Add to response buffer (accumulate all chunks)
+            // Add to response buffer (keep for fallback/debugging)
             responseAudioBufferRef.current.push(pcm16Data);
 
-            addMessage(`Received audio delta: ${pcm16Data.length} samples`);
-        } catch (error) {
-            addMessage(`Error handling audio delta: ${error.message}`);
-        }
-    }, [addMessage]);
+            // Stream the audio chunk immediately
+            await streamAudioChunk(pcm16Data);
 
+        } catch (error) {
+            addMessage(`Audio processing error: ${error.message}`);
+        }
+    }, [streamAudioChunk]);
+
+    // Keep the original playCompleteResponse as fallback
     const playCompleteResponse = useCallback(() => {
         if (!responseAudioBufferRef.current || responseAudioBufferRef.current.length === 0) {
             addMessage('No audio response to play');
@@ -100,8 +187,6 @@ export const useWebSocket = () => {
                 offset += chunk.length;
             }
 
-            addMessage(`Playing complete AI response: ${combinedPCM16.length} samples (${(combinedPCM16.length / 24000).toFixed(2)}s)`);
-
             // Create WAV file for playback
             const wavBuffer = createWavFile(combinedPCM16, 24000);
             const wavBlob = new Blob([wavBuffer], { type: 'audio/wav' });
@@ -112,7 +197,7 @@ export const useWebSocket = () => {
             audio.play();
 
             audio.onended = () => {
-                addMessage('AI response playback completed');
+                addMessage('AI response completed');
                 URL.revokeObjectURL(wavUrl);
                 isPlayingResponseRef.current = false;
 
@@ -141,7 +226,6 @@ export const useWebSocket = () => {
     const handleWebSocketMessage = useCallback((event) => {
         try {
             const data = JSON.parse(event.data);
-            addMessage(`Received: ${data.type}`);
 
             switch (data.type) {
                 case 'session.created':
@@ -152,22 +236,15 @@ export const useWebSocket = () => {
                     addMessage('Session updated successfully');
                     break;
 
-                case 'input_audio_buffer.committed':
-                    addMessage('Audio buffer committed');
-                    break;
-
                 case 'response.created':
-                    addMessage('Response creation started');
-                    // Reset audio buffer for new response
+                    const responseTime = userInputTimeRef.current ?
+                        `${((Date.now() - userInputTimeRef.current) / 1000).toFixed(1)}s` : '';
+                    addMessage(`AI responding... (${responseTime})`, true);
+                    // Reset audio buffer and streaming state for new response
                     responseAudioBufferRef.current = [];
-                    break;
-
-                case 'response.output_item.added':
-                    addMessage('Response item added');
-                    break;
-
-                case 'response.content_part.added':
-                    addMessage('Response content part added');
+                    resetStreamingState();
+                    isStreamingAudioRef.current = true;
+                    currentTranscriptRef.current = '';
                     break;
 
                 case 'response.audio.delta':
@@ -175,57 +252,49 @@ export const useWebSocket = () => {
                     break;
 
                 case 'response.audio.done':
-                    addMessage('Audio response complete - ready to play');
+                    isStreamingAudioRef.current = false;
                     break;
 
                 case 'response.done':
-                    addMessage('Response completed');
-                    // Check if we got any audio response and play it
-                    if (responseAudioBufferRef.current && responseAudioBufferRef.current.length > 0) {
-                        playCompleteResponse();
-                    } else {
-                        addMessage('No audio response received');
-                    }
-                    break;
-
-                case 'conversation.item.created':
-                    addMessage('Conversation item created');
+                    isStreamingAudioRef.current = false;
+                    // Audio has already been streamed, so just clean up
+                    setTimeout(() => {
+                        responseAudioBufferRef.current = [];
+                        resetStreamingState();
+                    }, 1000);
                     break;
 
                 case 'response.audio_transcript.delta':
                     if (data.delta) {
-                        addMessage(`Transcript: ${data.delta}`);
+                        currentTranscriptRef.current += data.delta;
                     }
                     break;
 
                 case 'response.audio_transcript.done':
-                    addMessage('Audio transcript completed');
-                    break;
-
-                case 'response.content_part.done':
-                    addMessage('Response content part completed');
-                    break;
-
-                case 'response.output_item.done':
-                    addMessage('Response output item completed');
-                    break;
-
-                case 'rate_limits.updated':
-                    addMessage('Rate limits updated');
+                    if (currentTranscriptRef.current) {
+                        addMessage(`AI: "${currentTranscriptRef.current}"`);
+                    }
                     break;
 
                 case 'error':
                     addMessage(`API Error: ${data.error.message}`);
                     break;
 
+                case 'rate_limits.updated':
+                    if (data.rate_limits && data.rate_limits.remaining_requests < 10) {
+                        addMessage(`⚠️ Low rate limit: ${data.rate_limits.remaining_requests} requests remaining`);
+                    }
+                    break;
+
                 default:
-                    addMessage(`Unhandled message type: ${data.type}`);
+                    // Silently handle other message types
+                    break;
             }
 
         } catch (e) {
             addMessage(`Error parsing message: ${e.message}`);
         }
-    }, [addMessage, handleAudioDelta, playCompleteResponse]);
+    }, [addMessage, handleAudioDelta, resetStreamingState]);
 
     const connect = useCallback(() => {
         if (websocketRef.current?.readyState === WebSocket.OPEN) {
@@ -241,43 +310,39 @@ export const useWebSocket = () => {
 
         websocketRef.current.onopen = () => {
             setIsConnected(true);
-            addMessage('Connected to WebSocket server.');
+            addMessage('Connected to server');
 
             // Send session configuration after a brief delay to ensure connection is fully ready
             setTimeout(() => {
                 if (websocketRef.current?.readyState === WebSocket.OPEN) {
-                    const sessionConfig = {
+                    const sessionUpdateMessage = {
                         type: "session.update",
                         session: {
-                            modalities: ["text", "audio"],
-                            instructions: "You are a helpful voice assistant. Please respond with both text and audio. Always provide an audio response.",
-                            voice: "alloy",
-                            input_audio_format: "pcm16",
-                            output_audio_format: "pcm16",
-                            input_audio_transcription: {
-                                model: "whisper-1"
-                            },
-                            turn_detection: null // Disable server VAD since we're manually controlling
+                            modalities: sessionConfig.modalities,
+                            instructions: sessionConfig.instructions,
+                            voice: sessionConfig.voice,
+                            input_audio_format: sessionConfig.input_audio_format,
+                            output_audio_format: sessionConfig.output_audio_format,
+                            input_audio_transcription: sessionConfig.input_audio_transcription,
+                            turn_detection: sessionConfig.turn_detection
                         }
                     };
 
-                    websocketRef.current.send(JSON.stringify(sessionConfig));
-                    addMessage('Sent session configuration');
-                } else {
-                    addMessage('WebSocket not ready for session configuration');
+                    websocketRef.current.send(JSON.stringify(sessionUpdateMessage));
+                    addMessage('Session configured');
                 }
-            }, 100); // 100ms delay to ensure connection is fully established
+            }, 100);
         };
 
         websocketRef.current.onmessage = handleWebSocketMessage;
 
-        websocketRef.current.onclose = () => {
+        websocketRef.current.onclose = (event) => {
             setIsConnected(false);
-            addMessage('WebSocket connection closed.');
+            addMessage(`Disconnected (${event.wasClean ? 'normal' : 'unexpected'})`);
         };
 
         websocketRef.current.onerror = (error) => {
-            addMessage(`WebSocket error: ${error.message}`);
+            addMessage(`Connection error: ${error.message || 'Failed to connect'}`);
         };
     }, [addMessage, handleWebSocketMessage]);
 
@@ -310,7 +375,7 @@ export const useWebSocket = () => {
         }
 
         if (websocketRef.current.readyState !== WebSocket.OPEN) {
-            addMessage(`WebSocket not ready - state: ${websocketRef.current.readyState}`);
+            addMessage('WebSocket not ready');
             return false;
         }
 
@@ -322,26 +387,28 @@ export const useWebSocket = () => {
         try {
             // Convert PCM16 to base64 safely
             const uint8Array = new Uint8Array(pcm16Data.buffer);
-            addMessage(`Converting ${uint8Array.length} bytes to base64...`);
-
             const base64Audio = uint8ArrayToBase64(uint8Array);
-            addMessage(`Base64 conversion complete, length: ${base64Audio.length}`);
 
-            // Send audio buffer append
-            const audioMessage = {
-                type: "input_audio_buffer.append",
-                audio: base64Audio
+            // Create conversation item with audio content
+            const conversationItemMessage = {
+                type: "conversation.item.create",
+                item: {
+                    type: "message",
+                    role: "user",
+                    content: [
+                        {
+                            type: "input_audio",
+                            audio: base64Audio
+                        }
+                    ]
+                }
             };
 
-            websocketRef.current.send(JSON.stringify(audioMessage));
-            addMessage(`Sent audio data: ${pcm16Data.length} samples`);
+            websocketRef.current.send(JSON.stringify(conversationItemMessage));
+            userInputTimeRef.current = Date.now();
+            addMessage(`Audio sent (${(pcm16Data.length / 24000).toFixed(1)}s)`, true);
 
-            // Commit the audio buffer and create response
-            const commitMessage = {
-                type: "input_audio_buffer.commit"
-            };
-            websocketRef.current.send(JSON.stringify(commitMessage));
-
+            // Create response to get AI reply
             const responseMessage = {
                 type: "response.create",
                 response: {
@@ -351,7 +418,6 @@ export const useWebSocket = () => {
             };
             websocketRef.current.send(JSON.stringify(responseMessage));
 
-            addMessage('Audio sent to API, waiting for response...');
             return true;
         } catch (error) {
             addMessage(`Error sending audio: ${error.message}`);
@@ -364,6 +430,11 @@ export const useWebSocket = () => {
         if (websocketRef.current) {
             websocketRef.current.close();
         }
+
+        // Clean up Web Audio API context
+        if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+            audioContextRef.current.close();
+        }
     }, []);
 
     return {
@@ -373,5 +444,7 @@ export const useWebSocket = () => {
         sendMessage,
         sendAudioData,
         disconnect,
+        // Expose streaming status for debugging
+        isStreamingAudio: isStreamingAudioRef.current,
     };
 }; 

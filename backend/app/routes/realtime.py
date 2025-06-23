@@ -11,7 +11,7 @@ realtime_router = APIRouter()
 
 # Set up logging
 logging.basicConfig(
-    level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
 # Determine appropriate headers
@@ -40,7 +40,9 @@ async def relay_messages(client_ws: WebSocket, vendor_ws):
                         data = json.loads(message["text"])
                         if data and json_validator(data):
                             await vendor_ws.send(json.dumps(data))
-                            logging.debug(f"Relayed JSON message: {data.get('type', 'unknown')}")
+                            # Only log non-audio messages to reduce noise
+                            if data.get('type') not in ['input_audio_buffer.append', 'response.audio.delta']:
+                                logging.info(f"Relayed message type: {data.get('type', 'unknown')}")
                         else:
                             warning_msg = "Invalid JSON data received."
                             logging.warning(warning_msg)
@@ -62,7 +64,7 @@ async def relay_messages(client_ws: WebSocket, vendor_ws):
                 data = await vendor_ws.recv()
                 
                 # All data from vendor is JSON text (including base64-encoded audio)
-                logging.debug("Received text data from vendor")
+                # Reduced logging - only log important events
                 await client_ws.send_text(data)
                     
         except websockets.exceptions.ConnectionClosed as e:
@@ -116,7 +118,7 @@ async def send_text_safe(ws: WebSocket, message: str):
 def json_validator(data) -> bool:
     """Validate if the input data is JSON."""
     try:
-        print(f"data: {data}")
+        # Removed debug print statement
         # Check if data is already a dict, which is valid JSON in Python
         if isinstance(data, dict):
             return True

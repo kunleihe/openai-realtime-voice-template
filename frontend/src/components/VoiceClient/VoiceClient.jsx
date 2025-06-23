@@ -10,13 +10,13 @@ const VoiceClient = () => {
 
     // Handle audio recording with callback to send to API
     const handleAudioRecorded = (pcm16Data) => {
-        console.log('VoiceClient: handleAudioRecorded called with', pcm16Data ? pcm16Data.length : 'null', 'samples');
+        // Reduced logging - only log when there are issues
         if (pcm16Data && sendAudioData) {
-            console.log('VoiceClient: Sending audio data to WebSocket');
             const success = sendAudioData(pcm16Data);
             if (success) {
                 setStatus({ type: 'info', message: 'Audio sent, waiting for response...' });
             } else {
+                console.error('VoiceClient: Failed to send audio');
                 setStatus({ type: 'error', message: 'Failed to send audio' });
             }
         } else {
@@ -53,21 +53,18 @@ const VoiceClient = () => {
     }, [isConnected]);
 
     const handleRecordStart = async () => {
-        console.log('VoiceClient: Starting recording...');
         if (!isRecording) {
             const success = await startRecording();
             if (!success) {
                 console.error('VoiceClient: Failed to start recording');
                 setStatus({ type: 'error', message: 'Failed to start recording. Please check microphone permissions.' });
             } else {
-                console.log('VoiceClient: Recording started successfully');
                 setStatus({ type: 'info', message: 'Recording... Release to send' });
             }
         }
     };
 
     const handleRecordStop = () => {
-        console.log('VoiceClient: Stopping recording...');
         if (isRecording) {
             stopRecording();
             setStatus({ type: 'info', message: 'Processing audio...' });
@@ -85,7 +82,7 @@ const VoiceClient = () => {
     return (
         <div className="voice-client">
             <div className="container">
-                <h1>🎤 Voice Client - Realtime API</h1>
+                <h1>Realtime Playground</h1>
 
                 <div className={getStatusClass()}>
                     {status.message}
@@ -117,7 +114,7 @@ const VoiceClient = () => {
                 </div>
 
                 <div className="audio-controls">
-                    <h3>Local Recording (for testing):</h3>
+                    <h3>User Recording Playpack:</h3>
                     {lastRecordingUrl ? (
                         <>
                             <audio className="audio-player" controls src={lastRecordingUrl} />

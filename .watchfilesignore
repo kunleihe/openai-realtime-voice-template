@@ -1,9 +1,0 @@
-# Ignore virtual environment
-venv/
-# Ignore other common directories that shouldn't trigger reloads
-.git/
-__pycache__/
-*.pyc
-.pytest_cache/
-.coverage
-.env 
