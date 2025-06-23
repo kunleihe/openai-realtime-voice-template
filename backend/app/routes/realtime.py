@@ -35,7 +35,7 @@ async def relay_messages(client_ws: WebSocket, vendor_ws):
                 message = await client_ws.receive()
                 
                 if "text" in message:
-                    # Handle JSON messages (all messages now including audio)
+                    # Handle JSON messages (including audio as base64-encoded strings)
                     try:
                         data = json.loads(message["text"])
                         if data and json_validator(data):
@@ -61,15 +61,9 @@ async def relay_messages(client_ws: WebSocket, vendor_ws):
             while True:
                 data = await vendor_ws.recv()
                 
-                # Check if data is binary (audio) or text (JSON)
-                if isinstance(data, bytes):
-                    # Binary data (audio response)
-                    logging.debug(f"Received binary data from vendor: {len(data)} bytes")
-                    await client_ws.send_bytes(data)
-                else:
-                    # Text data (JSON response)
-                    logging.debug("Received text data from vendor")
-                    await client_ws.send_text(data)
+                # All data from vendor is JSON text (including base64-encoded audio)
+                logging.debug("Received text data from vendor")
+                await client_ws.send_text(data)
                     
         except websockets.exceptions.ConnectionClosed as e:
             logging.info(f"Vendor WebSocket disconnected: {e}")
