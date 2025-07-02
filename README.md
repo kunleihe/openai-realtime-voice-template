@@ -104,7 +104,7 @@ cd ../backend && ./start_server.sh
 ## ⚙️ Configuration
 
 ### Voice Settings
-Customize the AI assistant in `frontend/src/config/sessionConfig.js`:
+Customize the AI assistant in `backend/app/config.py`:
 
 ```javascript
 export const sessionConfig = {
