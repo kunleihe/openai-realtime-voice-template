@@ -1,5 +1,4 @@
 import { useState, useRef, useCallback } from 'react';
-import { sessionConfig } from '../config/sessionConfig.js';
 
 export const useWebSocket = () => {
     const [isConnected, setIsConnected] = useState(false);
@@ -18,6 +17,7 @@ export const useWebSocket = () => {
 
     // Track timing for debugging
     const userInputTimeRef = useRef(null);
+    const firstAudioChunkRef = useRef(false);
 
     const addMessage = useCallback((message, addDivider = false) => {
         setMessages(prev => {
@@ -237,17 +237,30 @@ export const useWebSocket = () => {
                     break;
 
                 case 'response.created':
-                    const responseTime = userInputTimeRef.current ?
-                        `${((Date.now() - userInputTimeRef.current) / 1000).toFixed(1)}s` : '';
-                    addMessage(`AI responding... (${responseTime})`, true);
+                    addMessage(`AI is responding...`, true);
                     // Reset audio buffer and streaming state for new response
                     responseAudioBufferRef.current = [];
                     resetStreamingState();
                     isStreamingAudioRef.current = true;
                     currentTranscriptRef.current = '';
+                    firstAudioChunkRef.current = false;
                     break;
 
                 case 'response.audio.delta':
+                    // Calculate latency on first audio chunk (when audio actually starts playing)
+                    if (!firstAudioChunkRef.current && userInputTimeRef.current) {
+                        const latency = ((Date.now() - userInputTimeRef.current) / 1000).toFixed(1);
+                        // Update the last message to include latency
+                        setMessages(prev => {
+                            const newMessages = [...prev];
+                            const lastIndex = newMessages.length - 1;
+                            if (lastIndex >= 0 && newMessages[lastIndex].includes('AI is responding...')) {
+                                newMessages[lastIndex] = `AI is responding. (latency: ${latency}s)`;
+                            }
+                            return newMessages;
+                        });
+                        firstAudioChunkRef.current = true;
+                    }
                     handleAudioDelta(data.delta);
                     break;
 
@@ -296,7 +309,7 @@ export const useWebSocket = () => {
         }
     }, [addMessage, handleAudioDelta, resetStreamingState]);
 
-    const connect = useCallback(() => {
+    const connect = useCallback(async () => {
         if (websocketRef.current?.readyState === WebSocket.OPEN) {
             return; // Already connected
         }
@@ -306,44 +319,56 @@ export const useWebSocket = () => {
             return;
         }
 
-        websocketRef.current = new WebSocket('ws://localhost:8000/realtime');
+        try {
+            // Fetch session configuration from backend
+            const response = await fetch('http://localhost:8000/session/config');
+            if (!response.ok) {
+                throw new Error(`Failed to fetch session config: ${response.status}`);
+            }
+            const sessionConfig = await response.json();
 
-        websocketRef.current.onopen = () => {
-            setIsConnected(true);
-            addMessage('Connected to server');
+            websocketRef.current = new WebSocket('ws://localhost:8000/realtime');
 
-            // Send session configuration after a brief delay to ensure connection is fully ready
-            setTimeout(() => {
-                if (websocketRef.current?.readyState === WebSocket.OPEN) {
-                    const sessionUpdateMessage = {
-                        type: "session.update",
-                        session: {
-                            modalities: sessionConfig.modalities,
-                            instructions: sessionConfig.instructions,
-                            voice: sessionConfig.voice,
-                            input_audio_format: sessionConfig.input_audio_format,
-                            output_audio_format: sessionConfig.output_audio_format,
-                            input_audio_transcription: sessionConfig.input_audio_transcription,
-                            turn_detection: sessionConfig.turn_detection
-                        }
-                    };
+            websocketRef.current.onopen = () => {
+                setIsConnected(true);
+                addMessage('Connected to server');
 
-                    websocketRef.current.send(JSON.stringify(sessionUpdateMessage));
-                    addMessage('Session configured');
-                }
-            }, 100);
-        };
+                // Send session configuration after a brief delay to ensure connection is fully ready
+                setTimeout(() => {
+                    if (websocketRef.current?.readyState === WebSocket.OPEN) {
+                        const sessionUpdateMessage = {
+                            type: "session.update",
+                            session: {
+                                modalities: sessionConfig.modalities,
+                                instructions: sessionConfig.instructions,
+                                voice: sessionConfig.voice,
+                                input_audio_format: sessionConfig.input_audio_format,
+                                output_audio_format: sessionConfig.output_audio_format,
+                                input_audio_transcription: sessionConfig.input_audio_transcription,
+                                turn_detection: sessionConfig.turn_detection
+                            }
+                        };
 
-        websocketRef.current.onmessage = handleWebSocketMessage;
+                        websocketRef.current.send(JSON.stringify(sessionUpdateMessage));
+                        addMessage('Session configured');
+                    }
+                }, 100);
+            };
 
-        websocketRef.current.onclose = (event) => {
-            setIsConnected(false);
-            addMessage(`Disconnected (${event.wasClean ? 'normal' : 'unexpected'})`);
-        };
+            websocketRef.current.onmessage = handleWebSocketMessage;
 
-        websocketRef.current.onerror = (error) => {
-            addMessage(`Connection error: ${error.message || 'Failed to connect'}`);
-        };
+            websocketRef.current.onclose = (event) => {
+                setIsConnected(false);
+                addMessage(`Disconnected (${event.wasClean ? 'normal' : 'unexpected'})`);
+            };
+
+            websocketRef.current.onerror = (error) => {
+                addMessage(`Connection error: ${error.message || 'Failed to connect'}`);
+            };
+
+        } catch (error) {
+            addMessage(`Failed to connect: ${error.message}`);
+        }
     }, [addMessage, handleWebSocketMessage]);
 
     const sendMessage = useCallback((message) => {

@@ -9,7 +9,7 @@ health_check_router = APIRouter()
 async def health_check():
     return {
         "status": "healthy",
-        "message": "Convo Book API is running",
+        "message": "API is running",
         "environment": ENVIRONMENT,
         "cors_origins": CORS_ORIGINS
     }

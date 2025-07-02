@@ -5,7 +5,7 @@ import websockets
 import traceback
 
 from fastapi import WebSocket, WebSocketDisconnect, APIRouter
-from app.config import VENDOR_WS_URL, API_KEY, USE_AZURE_OPENAI
+from app.config import VENDOR_WS_URL, API_KEY, USE_AZURE_OPENAI, SESSION_CONFIG, OPENAI_TRANSCRIPTION_WS_URL 
 
 realtime_router = APIRouter()
 
@@ -14,16 +14,15 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
-# Determine appropriate headers
+# headers for realtime endpoint
 extra_headers = (
     {
         "Authorization": f"Bearer {API_KEY}",
-        "openai-beta": "realtime=v1",
+        "OpenAI-Beta": "realtime=v1",
     }
     if USE_AZURE_OPENAI
     else {"api-key": API_KEY}
 )
-
 
 async def relay_messages(client_ws: WebSocket, vendor_ws):
     """Relay messages between client and vendor WebSockets."""
@@ -115,6 +114,11 @@ async def send_text_safe(ws: WebSocket, message: str):
         logging.error(f"Error sending message to client: {e}")
 
 
+@realtime_router.get("/session/config")
+async def get_session_config():
+    """Get the session configuration for OpenAI Realtime API."""
+    return SESSION_CONFIG
+
 def json_validator(data) -> bool:
     """Validate if the input data is JSON."""
     try:
@@ -130,3 +134,36 @@ def json_validator(data) -> bool:
         return True
     except (json.JSONDecodeError, TypeError):
         return False
+
+
+@realtime_router.websocket("/transcription")
+async def transcription_websocket_endpoint(websocket: WebSocket):
+    """Handle transcription WebSocket connections from clients."""
+    client_ip = websocket.client.host
+    logging.info(f"Transcription client connected: {client_ip}")
+    await websocket.accept()
+
+    try:
+        async with websockets.connect(
+            OPENAI_TRANSCRIPTION_WS_URL, extra_headers=extra_headers
+        ) as vendor_ws:
+            logging.info("Connected to OpenAI transcription WebSocket with API key")
+            
+            # Send connection success to client
+            await websocket.send_text(json.dumps({
+                "type": "connection.established"
+            }))
+            
+            await relay_messages(websocket, vendor_ws)
+            
+    except Exception as e:
+        logging.error(f"Transcription WebSocket error: {e}")
+        try:
+            await websocket.send_text(json.dumps({
+                "type": "error", 
+                "error": f"Transcription connection failed: {str(e)}"
+            }))
+        except:
+            pass
+    finally:
+        logging.info(f"Transcription client disconnected: {client_ip}")

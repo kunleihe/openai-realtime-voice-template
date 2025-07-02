@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 
-export const useAudioRecorder = (onAudioRecorded) => {
+export const useAudioRecorder = (onAudioRecorded, onAudioChunk = null) => {
     const [isRecording, setIsRecording] = useState(false);
     const [recordingTime, setRecordingTime] = useState('00:00');
     const [lastRecordingUrl, setLastRecordingUrl] = useState(null);
@@ -12,7 +12,8 @@ export const useAudioRecorder = (onAudioRecorded) => {
     const recordingTimerRef = useRef(null);
     const recordingStartTimeRef = useRef(null);
     const audioContextRef = useRef(null);
-    const accumulatedAudioDataRef = useRef([]);
+    const scriptProcessorRef = useRef(null);
+    const accumulatedPCM16DataRef = useRef([]);
 
     const updateRecordingTime = useCallback(() => {
         if (recordingStartTimeRef.current) {
@@ -34,7 +35,7 @@ export const useAudioRecorder = (onAudioRecorded) => {
         return pcm16Array;
     }, []);
 
-    // Convert WebM audio to PCM16 format
+    // Convert WebM audio to PCM16 format (for complete recordings)
     const convertWebMToPCM16 = useCallback(async (audioBlob) => {
         try {
             console.log('Starting audio conversion - blob size:', audioBlob.size, 'bytes');
@@ -85,14 +86,46 @@ export const useAudioRecorder = (onAudioRecorded) => {
 
             audioStreamRef.current = stream;
             recordedChunksRef.current = [];
-            accumulatedAudioDataRef.current = [];
+            accumulatedPCM16DataRef.current = [];
 
-            // Initialize AudioContext for PCM16 conversion
+            // Initialize AudioContext for real-time PCM16 capture
             audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)({
                 sampleRate: 24000
             });
 
-            // Determine supported audio format
+            // Set up Web Audio API for real-time audio processing
+            const source = audioContextRef.current.createMediaStreamSource(stream);
+
+            // Use ScriptProcessorNode for real-time audio processing
+            const bufferSize = 4096; // Process in 4KB chunks
+            scriptProcessorRef.current = audioContextRef.current.createScriptProcessor(bufferSize, 1, 1);
+
+            scriptProcessorRef.current.onaudioprocess = (event) => {
+                if (onAudioChunk) {
+                    const inputData = event.inputBuffer.getChannelData(0);
+                    const pcm16Data = floatToPCM16(inputData);
+
+                    console.log(`[AudioRecorder] Audio chunk processed: ${pcm16Data.length} samples`);
+
+                    // Accumulate for complete recording
+                    accumulatedPCM16DataRef.current.push(pcm16Data);
+
+                    // Send chunk for real-time transcription
+                    onAudioChunk(pcm16Data);
+                }
+            };
+
+            // Connect the audio pipeline: source -> processor
+            // Note: We need to connect to destination for some browsers to process audio
+            // Use GainNode with zero gain to prevent audio feedback
+            const gainNode = audioContextRef.current.createGain();
+            gainNode.gain.value = 0; // Mute the audio to prevent feedback
+
+            source.connect(scriptProcessorRef.current);
+            scriptProcessorRef.current.connect(gainNode);
+            gainNode.connect(audioContextRef.current.destination);
+
+            // Determine supported audio format for recording
             let mimeType = 'audio/webm';
             if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
                 mimeType = 'audio/webm;codecs=opus';
@@ -101,13 +134,13 @@ export const useAudioRecorder = (onAudioRecorded) => {
             }
 
             console.log('Using MIME type:', mimeType);
-            setAudioFormat(`PCM16 24kHz (converted from ${mimeType})`);
+            setAudioFormat(`PCM16 24kHz (real-time capture)`);
 
             mediaRecorderRef.current = new MediaRecorder(stream, { mimeType });
 
             mediaRecorderRef.current.ondataavailable = (event) => {
                 if (event.data && event.data.size > 0) {
-                    console.log('Audio chunk received:', event.data.size, 'bytes');
+                    console.log('Audio chunk recorded:', event.data.size, 'bytes');
                     recordedChunksRef.current.push(event.data);
                 }
             };
@@ -115,8 +148,28 @@ export const useAudioRecorder = (onAudioRecorded) => {
             mediaRecorderRef.current.onstop = async () => {
                 console.log('Recording stopped, processing', recordedChunksRef.current.length, 'chunks');
 
+                // Disconnect Web Audio API components
+                if (scriptProcessorRef.current) {
+                    scriptProcessorRef.current.disconnect();
+                    scriptProcessorRef.current = null;
+                }
+
                 if (recordedChunksRef.current.length === 0) {
                     console.error('No audio chunks recorded');
+                    // Use accumulated PCM16 data as fallback
+                    if (accumulatedPCM16DataRef.current.length > 0) {
+                        const totalLength = accumulatedPCM16DataRef.current.reduce((sum, chunk) => sum + chunk.length, 0);
+                        const combinedPCM16 = new Int16Array(totalLength);
+                        let offset = 0;
+                        for (const chunk of accumulatedPCM16DataRef.current) {
+                            combinedPCM16.set(chunk, offset);
+                            offset += chunk.length;
+                        }
+                        console.log('Using accumulated PCM16 data:', combinedPCM16.length, 'samples');
+                        if (onAudioRecorded) {
+                            onAudioRecorded(combinedPCM16);
+                        }
+                    }
                     return;
                 }
 
@@ -152,20 +205,21 @@ export const useAudioRecorder = (onAudioRecorded) => {
                 }
             };
 
-            mediaRecorderRef.current.start(100); // Collect data every 100ms
+            // Use shorter intervals for regular recording
+            mediaRecorderRef.current.start(100);
             setIsRecording(true);
             recordingStartTimeRef.current = Date.now();
 
             // Start timer
             recordingTimerRef.current = setInterval(updateRecordingTime, 100);
 
-            console.log('Recording started successfully');
+            console.log('Recording started successfully with real-time PCM16 capture');
             return true;
         } catch (error) {
             console.error('Error starting recording:', error);
             return false;
         }
-    }, [updateRecordingTime, convertWebMToPCM16, onAudioRecorded]);
+    }, [updateRecordingTime, convertWebMToPCM16, onAudioRecorded, onAudioChunk, floatToPCM16]);
 
     const stopRecording = useCallback(() => {
         console.log('Stopping recording...');
@@ -183,6 +237,13 @@ export const useAudioRecorder = (onAudioRecorded) => {
         if (recordingTimerRef.current) {
             clearInterval(recordingTimerRef.current);
             recordingTimerRef.current = null;
+        }
+
+        // Clean up Web Audio API components
+        if (scriptProcessorRef.current) {
+            scriptProcessorRef.current.disconnect();
+            scriptProcessorRef.current = null;
+            console.log('ScriptProcessorNode disconnected');
         }
 
         setRecordingTime('00:00');
